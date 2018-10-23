@@ -1,0 +1,530 @@
+ % Document formatting:
+\documentclass [11pt] {article}
+\usepackage [margin = 1 in] {geometry}
+\usepackage {graphicx}
+\usepackage {pgfplots}
+\usepackage {cite}
+\setlength {\parindent} {0pt}
+
+% Title information:
+\title {Exploring the Scalability of Peptide Identification Tools}
+\author {Alex Cadigan \\ Department of Electrical and Computer Engineering \\ Western Michigan University}
+
+% Initiates the document:
+\begin {document}
+	\maketitle
+
+	% Background:
+	
+	% Title:
+	\section {Background}
+	
+	% Text:
+	\paragraph {}
+	\qquad Typical peptide identification involves searching tandem mass spectra, produced by a mass spectrometer, against a proteome database containing the protein sequences of a certain species.  The two peptide identification tools tested in this project were MSFragger and Crux Tide-Search.  These tools use mass spectrometry data that has been converted to one of the supported MS/MS input formats (MGF, mzXML, mzML) and a proteome database in FASTA format as input.  Crux Tide-Search uses an implementation of the SEQUEST algorithm; a more traditional method of peptide identification \cite {mcilwain2014crux}.  MSFragger uses a fragment-ion indexing technique; a new and unique method of peptide identification \cite {kong2017msfragger}
+	\paragraph {}
+	\qquad There are two types of peptide identification searches: open searches and narrow-window searches.  Narrow-window searches use a small precursor mass tolerance when searching through data and can be executed quickly on most peptide identification tools.  Open searches use a wide precursor mass tolerance (hundreds of Daltons) and are impractical to run on traditional peptide identification tools.  However, MSFragger's new fragment-ion indexing technique has allowed open searches to become computationally feasible \cite {kong2017msfragger}.  This is a major step forward in peptide identification, and there are many applications of open searching made possible by the MSFragger tool.
+	
+	% Introduction:
+	
+	% Title:
+	\section {Introdution}
+	
+	% Text:
+	\paragraph {}
+	\qquad Although MSFragger has made open searching widely accessible, the tool requires a large amount of memory to store the fragment-ion index that is generated.  We wanted to experiment with the scalability of MSFragger and Crux Tide-Search to further test how the MSFragger method of peptide identification compares to the Crux Tide-Search method.  We chose to use the runtime of the two tools as a way to judge their scalability.  There are many different variables that will change the runtime of peptide identification tools.  However, we chose to manipulate the size of the proteome database and the size of the MS/MS data.  We hypothesized that the runtime of MSFragger would increase significantly as the size of the proteome database grew, and that MSFragger would run slower than Crux Tide-Search, because of the time it would take to search through the very large fragment-ion index.  We also hypothesized that increasing the size of the MS/MS data would increase the runtime of both tools, but that MSFragger would consistently run faster than Crux Tide-Search, because of MSFragger's ability to search through data quicker than traditional tools.
+	
+	% Methods:
+	
+	% Title:
+	\section {Methods}
+	
+	% Text:
+	\paragraph {}
+	\qquad In order to test our first hypothesis, we needed a way to generate proteome databases of different sizes.  It was important to add elements of randomization into database generation; so that the experiments could be conducted using a wide range of data.  However, there was still a need to keep elements of naturally-occurring protein sequences in the synthetically generated databases; so that peptide identification matches would still occur.  The solution was to take preexisting human proteome data, randomize and manipulate it in different ways, and build synthetic databases of different sizes to then use for scalability testing on MSFragger and Crux Tide-Search.  Testing our second hypothesis proved to be much easier; as there was a variety of publicly available MS/MS data to choose from.
+		
+	% Title:
+	\subsection {Random Database Generator}
+	
+	% Text:
+	\paragraph {}
+	\qquad The Random Database Generator was designed to allow users to generate their own synthetic proteome databases of different sizes.  The program is written in Java, and is equipped with a simple GUI for user convenience.  The user may enter the size of the database to be created in bytes, kilobytes, megabytes, or gigabytes.  The user may also choose how to generate the database.  There are five different methods of protein sequence manipulation that the program employs to build the randomized database.  The first four methods work by randomly selecting a protein sequence from the supplied proteome and manipulating it in some way.  Method 1 selects a substring of random length from the sequence.  Method 2 will mutate an amino acid from the sequence by choosing a random amino acid and replacing every instance of it within the sequence with another randomly chosen amino acid.  Method 3 will insert amino acids into the sequence by running through the sequence, repeatedly choosing a random location, and inserting a random amino acid into that position.  Method 4 will delete random amino acids in the sequence by running through the sequence, repeatedly choosing a random location, and deleting the amino acid in that position.  Method 5 will randomly choose two of the above methods and concatenate the two resulting sequences.  The resulting sequence from each of these five methods will be used as one protein sequence in the synthetically generated database.  The user may choose what percent of the database is generated using each method (default values are 20\%).  Lastly, the user may choose which file containing a proteome database in FASTA format to use as a basis for protein sequence generation and the output file that will contain the synthetically generated database.
+	\paragraph {}
+	\qquad The Random Database Generator begins by parsing the supplied proteome database.  The program is equipped with a simple FASTA data parser which will read and store the sequence information from the proteome selected by the user.  The program will then begin generating the database.  The program makes use of the fact that one character takes up one byte of space.  This allows the program to control the size of the database by regulating how many amino acid characters have been written to the output file.  The program will repeatedly use one of the five previously mentioned methods to generate a protein sequence, until the size of the database matches the user-specified value.  Which method is used in sequence generation is determined randomly, based on the percentages entered by the user.  For each sequence generated by the program, a decoy sequence will also be generated.  Decoy sequences are used in false discovery rate estimates and are necessary for the peptide identification tools to run properly.  The program uses reverse sequences as decoys, which are simply the synthetically generated sequences in reverse.  When the program is finished, it will have generated a database in FASTA format of the user-specified size.  The actual size of the database will be larger than what was specified, but this is because of the additional characters included for protein sequence descriptions.  The size of the sequences themselves will total the user-specified value.  The database will then be ready to use as input on MSFragger and Crux Tide-Search.
+	
+	% Experiments:
+	
+	% Title:
+	\section {Experiments}
+	
+	% Title:
+	\subsection {Experiment 1}
+	
+	% Text:
+	\paragraph {}
+	\qquad We designed experiment 1 to test our first hypothesis.  The Random Database Generator program was used to test a variety of different proteome database sizes on both MSFragger and Crux Tide-Search.  MS/MS data taken from a human sample was used for each trial of the experiment.  In part 1 of the experiment, we used MSFragger to perform an open search.  We set the precursor\_mass\_tolerance variable to 500 Da, and no variable modifications were used.  All other variables were at their defaults for an open search.  See section 7.1 for more details about how the MSFragger open search was run.  In part 2 of the experiment, we used MSFragger to perform a narrow-window search.  We set the precursor\_mass\_tolerance variable to 4 Da, and no variable modifications were used.  All other variables were at their defaults for a narrow-window search.  See section 7.2 for more details about how the MSFragger narrow-window search was run.  The Philosopher tool was used for processing results from MSFragger.  See section 7.3 for details on how Philosopher was run.  In part 3 of the experiment, we used Crux Tide-Search to perform a narrow-window search under similar conditions to the MSFragger narrow-window search.  We set the precursor-window variable to 4 Da, the min-peaks variable to 15, and the num-threads variable to 1.  All other variables were at their default values.  See section 7.4 for more details on how Crux Tide-Search was run.
+	
+	% Title:
+	\subsection {Experiment 2}
+	
+	% Text:
+	\paragraph {}
+	\qquad We designed experiment 2 to test our second hypothesis.  The Random Database Generator program was used to create a 40 MB database that was used for each trial of the experiment.  MS/MS data taken from a human sample was stored in a file and duplicated as necessary to test different sizes of MS/MS data on the two tools.  In part 1 of the experiment, we used MSFragger to perform an open search.  We set the precursor\_mass\_tolerance variable to 500 Da, and no variable modifications were used.  All other variables were at their defaults for an open search.  See section 7.1 for more details about how the MSFragger open search was run.  In part 2 of the experiment, we used MSFragger to perform a narrow-window search.  We set the precursor\_mass\_tolerance variable to 4 Da, and no variable modifications were used.  All other variables were at their defaults for a narrow-window search.  See section 7.2 for more details about how the MSFragger narrow-window search was run.  The Philosopher tool was used for processing results from MSFragger.  See section 7.3 for details on how Philosopher was run.  In part 3 of the experiment, we used Crux Tide-Search to perform a narrow-window search under similar conditions to the MSFragger narrow-window search.  We set the precursor-window variable to 4 Da, the min-peaks variable to 15, and the num-threads variable to 1.  All other variables were at their default values.  See section 7.4 for more details on how Crux Tide-Search was run.
+	
+	% Title:
+	\subsection {System Specifications}
+	\paragraph {}
+	
+	% Text:
+	\qquad These two experiments were conducted on a Windows 7 Professional 64-bit operating system.  A 3.40 GHz Intel Core i7-2600 CPU was installed in the system with 4 cores (8 logical cores).  The system had 8 GB of Corsair XMS3 DDR3 RAM available.
+	
+	% Title:
+	\section {Results}
+	\paragraph {}
+		
+	% Figure 1:
+	\begin {figure} [h]
+		\centering
+		
+		\begin {tikzpicture} [scale = 1.25]
+		
+			\begin {axis} [title = {Runtimes of MSFragger and Crux Tide-Search}, xlabel = {Database Size}, ylabel = {Runtime (Min)}, symbolic x coords={0, 1 KB, 1 MB, 10 MB, 25 MB, 50 MB, 75 MB, 150 MB, 250 MB}, height = 7 cm, width = 13 cm, legend pos = north west, ymajorgrids = true, grid style = dashed]
+			
+			\addplot [color = blue, mark = triangle]
+				coordinates {(0, 0.05) (1 KB, 0.883) (1 MB, 2.3) (10 MB, 4.316) (25 MB, 7.13) (50 MB, 15.15) (75 MB, 23.6) (150 MB, 40.76)};
+				
+			\addplot [color = red, mark = triangle]
+				coordinates {(0, 0.033) (1 KB, 0.083) (1 MB, 2.1) (10 MB, 3.283) (25 MB, 3.35) (50 MB, 11.95) (75 MB, 15.96) (150 MB, 22.53)};
+				
+			\addplot [color = yellow, mark = triangle]
+				coordinates {(0, 0) (1 KB, 5.283) (1 MB, 5.3) (10 MB, 6.23) (25 MB, 7.5) (50 MB, 9.6) (75 MB, 11.76) (150 MB, 21.85)};
+				
+			\legend {MSFragger Open Search, MSFragger Narrow-Window Search, Crux Tide-Search}
+			
+			\end {axis}
+			
+		\end{tikzpicture}	
+		
+		\caption{The runtimes of MSFragger and Crux Tide-Search using database sizes from 0 to 150 MB}
+		\label{DatabaseSize}
+		
+	\end{figure}
+	
+	% Figure 2:
+	\begin {figure} [h]
+		\centering
+		
+		\begin {tikzpicture} [scale = 1.25]
+		
+			\begin {axis} [title = {Runtimes of MSFragger and Crux Tide-Search}, xlabel = {Database Size (MB)}, ylabel = {Runtime (Hours)}, xtick = {10, 50, 150, 250}, height = 7 cm, width = 13 cm, legend pos = north west, ymajorgrids = true, grid style = dashed]
+			
+			\addplot [color = blue, mark = triangle]
+				coordinates {(0, 0) (1, 0.033) (10, 0.066) (25, 0.116) (50, 0.25) (75, 0.383) (150, 0.666) (250, 8.333)};
+				
+			\addplot [color = red, mark = triangle]
+				coordinates {(0, 0) (1, 0.033) (10, 0.05) (25, 0.05) (50, 0.183) (75, 0.25) (150, 0.366) (250, 7.583)};
+				
+			\addplot [color = yellow, mark = triangle]
+				coordinates {(0, 0) (1, 0.083) (10, 0.1) (25, 0.116) (50, 0.15) (75, 0.183) (150, 0.35) (250, 0.966)};
+				
+			\legend {MSFragger Open Search, MSFragger Narrow-Window Search, Crux Tide-Search}
+			
+			\end {axis}
+			
+		\end{tikzpicture}	
+		
+		\caption{The runtimes of MSFragger and Crux Tide-Search using database sizes up to 250 MB}
+		\label{LargerDatabaseSize}
+		
+	\end{figure}
+	
+	% Text:
+	\qquad Fig.~\ref {DatabaseSize} and Fig.~\ref {LargerDatabaseSize} show the results of Experiment 1 (see section 7.5 for more details about the results of Experiment 1), where we tested database sizes up to 250 MB on the two tools.  From these results, we can see that the MSFragger open search consistently ran slower than the MSFragger narrow-window search.  This is to be expected, because open searches require greater computational power and time than narrow-window searches.  We also see that for database sizes of less than 25 MB, Crux Tide-Search runs slower than both the MSFragger open search and narrow-window search.  However, Crux Tide-Search runs faster than the MSFragger open search with database sizes greater than 25 MB.  Additionally, Crux Tide-Search runs slightly faster than the MSFragger narrow-window search with database sizes from 50 MB to 150 MB.  Fig.~\ref {LargerDatabaseSize} shows us that MSFragger experiences a dramatic increase in runtime with database sizes greater than 150 MB.  However, Crux Tide-Search only experienced a modest increase in runtime and performs significantly better than both the MSFragger open search and narrow-window search.  This is likely because the size of the fragment-ion index generated by MSFragger is increasing significantly with each increasing database size.  Once the index size grows large enough, MSFragger loses it's advantage in speed over Crux Tide-Search.  
+	\paragraph {}
+	\qquad We also attempted to test a database size of 500 MB on the two tools.  MSFragger ran for over a day before throwing a java.util.concurrent.TimeoutException exception.  With a database of size 500 MB, MSFragger will generate a fragment-ion index of approximately 22 GB.  In cases where the index size is larger than the available memory, MSFragger will try to split up the index and search through it piece by piece.  In this case, however, MSFragger must have become hung-up with the large index, causing the error to be thrown.  500 MB is much larger than many of the publicly available proteome databases, and it's possible the tool was simply not made to handle such large databases.  
+	\paragraph {}
+	
+	% Figure 3:
+	\begin {figure} [h]
+		\centering
+		
+		\begin {tikzpicture} [scale = 1.25]
+		
+			\begin {axis} [title = {Fragment-Ion Index Size in MSFragger}, xlabel = {Database Size}, ylabel = {Index Size (GB)}, symbolic x coords={0, 1 KB, 1 MB, 10 MB, 25 MB, 50 MB, 75 MB, 100 MB, 150 MB, 250 MB, 500 MB, 1 GB}, height = 7 cm, width = 12 cm, legend pos = north west, ymajorgrids = true, grid style = dashed]
+			
+			\addplot [color = blue, mark = triangle]
+				coordinates {(0, 0) (1 KB, 0) (1 MB, 0.06) (10 MB, 0.61) (25 MB, 1.46) (50 MB, 2.78) (75 MB, 4.03) (100 MB, 5.234) (150 MB, 7.56) (250 MB, 12) (500 MB, 22.66) (1 GB, 43.08)};
+				
+ 			\end {axis}
+			
+		\end {tikzpicture}	
+		
+		\caption {The size of the fragment-ion index generated by MSFragger as the proteome database size increases}
+		\label {IndexSize}
+		
+	\end {figure}
+	
+	% Text:
+	\qquad Fig.~\ref {IndexSize} shows the size of the fragment-ion index generated by MSFragger during Experiment 1 (See section 7.5 for more details about the results of Experiment 1).  We measured the index size using database sizes of up to 1 GB.  From these results, we can see that the index size grows quite large as the database size increases.  With smaller database sizes, the index size is rather small.  However, running MSFragger with a database size of 150 MB produces roughly 7.5 GB of index.  Running MSFragger with a database size of 1 GB produces over 40 GB of index.
+	\paragraph {}
+		
+	% Figure 4:
+	\begin {figure} [h]
+		\centering
+		
+		\begin {tikzpicture} [scale = 1.25]
+		
+			\begin {axis} [title = {Runtimes of MSFragger and Crux Tide-Search}, xlabel = {Size of MS/MS Data (GB)}, ylabel = {Runtime (Min)}, xtick = {9.65, 28.9, 48.3, 77.2, 96.5, 193}, height = 7 cm, width = 14 cm, legend pos = north west, ymajorgrids = true, grid style = dashed]
+			
+			\addplot [color = blue, mark = triangle]
+				coordinates {(9.65, 9.9) (19.3, 22.683) (28.9, 32.216) (38.6, 45.416) (48.3, 46.983) (57.9, 56.516) (77.2, 78.016) (96.5, 111.116) (193, 241.7)};
+				
+			\addplot [color = red, mark = triangle]
+				coordinates {(9.65, 4.583) (19.3, 11.3) (28.9, 18.86) (38.6, 26.06) (48.3, 41.85) (57.9, 45.383) (77.2, 60.883) (96.5, 77.93) (193, 165.1)};
+				
+			\addplot [color = yellow, mark = triangle]
+				coordinates {(9.65, 8.583) (19.3, 17.416) (28.9, 27.283) (38.6, 36.53) (48.3, 46.85) (57.9, 56.06) (77.2, 71.3) (96.5, 94.016) (193, 181.283)};
+				
+			\legend {MSFragger Open Search, MSFragger Narrow-Window Search, Crux Tide-Search}
+			
+			\end {axis}
+			
+		\end{tikzpicture}	
+		
+		\caption{The runtimes of MSFragger and Crux Tide-Search as the size of the MS/MS data increases}
+		\label{MSDataSize}
+		
+	\end{figure}
+	
+	% Text:
+	\qquad Fig.~\ref {MSDataSize} shows the results of Experiment 2 (see section 7.6 for more details about the results of Experiment 2).  We tested sizes of MS/MS data ranging from about 10 GB to 200 GB.  From these results, we can see that both MSFragger and Crux Tide-Search increased in runtime as the size of the MS/MS data increased.  This is what was expected, as it takes additional computational power and time to process additional MS/MS data.  We can also see that the MSFragger open search ran the slowest, the MSFragger narrow-window search ran the fastest, and Crux Tide-Search ran in between the two.  We expected the MSFragger narrow-window search to run faster than Crux Tide-Search, because of MSFragger's ability to process MS/MS data faster than traditional peptide identification tools.  
+	
+	% Discussion:
+	
+	% Title:
+	\section  {Discussion}
+	
+	% Text:
+	\paragraph {}
+	\qquad 
+	
+	\qquad The results of Experiment 1 demonstrate that MSFragger requires a large amount of memory to store it's fragment-ion index.  This causes the runtime of MSFragger to increase significantly as the database size increases and could pose a computational problem for some systems if there is not enough memory to store the index.  Although MSFragger claims to use a faster algorithm for peptide identification, our results show that Crux Tide-Search outperforms MSFragger as the database size grows larger.  This provides evidence that a more traditional searching algorithm may be favorable for peptide identification searches that use large databases.  When we measured the size of the fragment-ion index generated by MSFragger, we noted significant increases in index size as the database grew larger.  From these results, we can conclude that MSFragger does not scale well with increasing database sizes, and that Crux Tide-Search is the better option for large database sizes.  
+	\paragraph {}
+	\qquad The results of Experiment 2 show that MSFragger is capable of performing fast searches on large amounts of MS/MS data, if the database is small.  The MSFragger narrow-window search ran faster than the Crux Tide-Search at every stage of the experiment.  This demonstrates an important advantage that MSFragger has over traditional peptide identification tools.  We can conclude that MSFragger is the better option for searching through MS/MS data when using a small database.  The results also confirm that MSFragger is capable of conducting open searches in a reasonable amount of time, as the runtimes of the MSFragger open search were not significantly higher than the narrow-window search and Crux Tide-Search.  These results show that although MSFragger does not scale well with increasing database sizes, the tool does scale well with increasing sizes of MS/MS data.  
+	\paragraph {}
+	A suggestion for future research on this topic would be to run experiments similar to Experiment 2, except with increasing database sizes.  This could show which variable (database size or size of MS/MS data) has a larger affect on the runtime of the two tools, and could give us a better indication of the strengths and weaknesses of MSFragger and Crux Tide-Search.  Perhaps if both the database size and size of the MS/MS data was increased significantly, MSFragger would run faster than Crux Tide-Search.  It's also possible that the large fragment-ion index generated by MSFragger would greatly slow down the tool, so that Crux Tide-Search would run faster.  More testing is needed to fully understand the scalability of these two tools and to be able to determine which one is better in specific scenarios.
+	
+	% Supplementary Material:
+	
+	% Title:
+	\section {Supplementary Material}
+	
+	% Title:
+	\subsection {MSFragger Open Search}
+	
+	% Text:
+	The specific parameters that MSFragger used while running an open search are listed below: \\\\
+	num\_threads = 0 \\
+	precursor\_mass\_tolerance = 500 \\
+	precursor\_mass\_units = 0 \\		
+	precursor\_true\_tolerance = 20 \\
+	precursor\_true\_units = 1 \\	
+	fragment\_mass\_tolerance = 20 \\
+	fragment\_mass\_units = 1 \\		
+	isotope\_error = 0 \\		
+	search\_enzyme\_name = Trypsin \\
+	search\_enzyme\_cutafter = KR \\
+	search\_enzyme\_butnotafter = P \\
+	num\_enzyme\_termini = 2 \\			
+	allowed\_missed\_cleavage = 1 \\		
+	clip\_nTerm\_M = 1 \\
+	\# variable\_mod\_01 = 15.99490 M \\
+	\# variable\_mod\_02 = 42.01060 [* \\
+	\# variable\_mod\_03 = 79.96633 STY \\
+	\# variable\_mod\_04 = -17.02650 nQnC \\
+	\# variable\_mod\_05 = -18.01060 nE \\
+	allow\_multiple\_variable\_mods\_on\_residue = 1 \\		
+	max\_variable\_mods\_per\_mod = 3 \\
+	max\_variable\_mods\_combinations = 5000 \\			
+	output\_file\_extension = pepXML \\
+	output\_format = pepXML \\
+	output\_report\_topN = 1 \\
+	output\_max\_expect = 50.0 \\
+	precursor\_charge = 0 0 \\	
+	override\_charge = 0 \\	
+	digest\_min\_length = 7 \\
+	digest\_max\_length = 50 \\
+	digest\_mass\_range = 500.0 5000.0 \\		
+	max\_fragment\_charge = 2 \\		
+	track\_zero\_topN = 0 \\	
+	zero\_bin\_accept\_expect = 0 \\		
+	zero\_bin\_mult\_expect = 1 \\		
+	add\_topN\_complementary = 0 \\
+	minimum\_peaks = 15 \\	
+	use\_topN\_peaks = 100 \\
+	min\_fragments\_modelling = 3 \\
+	min\_matched\_fragments = 6 \\
+	minimum\_ratio = 0.01 \\	
+	clear\_mz\_range = 0.0 0.0 \\			
+	add\_Cterm\_peptide = 0.000000 \\
+	add\_Nterm\_peptide = 0.000000 \\
+	add\_Cterm\_protein = 0.000000 \\
+	add\_Nterm\_protein = 0.000000 \\
+	add\_G\_glycine = 0.000000 \\ 
+	add\_A\_alanine = 0.000000 \\
+	add\_S\_serine = 0.000000 \\
+	add\_P\_proline = 0.000000 \\
+	add\_V\_valine = 0.000000 \\
+	add\_T\_threonine = 0.000000 \\
+	add\_C\_cysteine = 0.000000 \\
+	add\_L\_leucine = 0.000000 \\
+	add\_I\_isoleucine = 0.000000 \\ 
+	add\_N\_asparagine = 0.000000 \\
+	add\_D\_aspartic\_acid = 0.000000 \\
+	add\_Q\_glutamine = 0.000000 \\
+	add\_K\_lysine = 0.000000 \\
+	add\_E\_glutamic\_acid = 0.000000 \\
+	add\_M\_methionine = 0.000000 \\
+	add\_H\_histidine = 0.000000 \\
+	add\_F\_phenylalanine = 0.000000 \\
+	add\_R\_arginine = 0.000000 \\
+	add\_Y\_tyrosine = 0.000000 \\
+	add\_W\_tryptophan = 0.000000 \\
+	add\_B\_user\_amino\_acid = 0.000000 \\
+	add\_J\_user\_amino\_acid = 0.000000 \\
+	add\_O\_user\_amino\_acid = 0.000000 \\
+	add\_U\_user\_amino\_acid = 0.000000 \\
+	add\_X\_user\_amino\_acid = 0.000000 \\
+	add\_Z\_user\_amino\_acid = 0.000000 \\
+	database\_name = Database.txt \\
+	
+	The MSFragger open search was run using the following command: \\\\
+	java -Xmx8G -jar MSFragger.jar OpenSearch.params MSData.mzXML \\
+	
+	% Title:
+	\subsection {MSFragger - Narrow-Window Search}
+	
+	% Text:
+	The specific parameters that MSFragger used while running a narrow-window search are listed below: \\\\
+	num\_threads = 0 \\
+	precursor\_mass\_tolerance = 4 \\
+	precursor\_mass\_units = 0 \\		
+	precursor\_true\_tolerance = 0 \\
+	precursor\_true\_units = 0 \\	
+	fragment\_mass\_tolerance = 20 \\
+	fragment\_mass\_units = 1 \\		
+	isotope\_error = 0/1/2 \\	
+	search\_enzyme\_name = Trypsin \\
+	search\_enzyme\_cutafter = KR \\
+	search\_enzyme\_butnotafter = P \\
+	num\_enzyme\_termini = 2 \\	
+	allowed\_missed\_cleavage = 1 \\	
+	clip\_nTerm\_M = 1 \\
+	\# variable\_mod\_01 = 15.99490 M \\
+	\# variable\_mod\_02 = 42.01060 [* \\
+	\# variable\_mod\_03 = 79.96633 STY \\
+	\# variable\_mod\_04 = -17.02650 nQnC \\
+	\# variable\_mod\_05 = -18.01060 nE \\
+	allow\_multiple\_variable\_mods\_on\_residue = 1 \\		
+	max\_variable\_mods\_per\_mod = 3	 \\
+	max\_variable\_mods\_combinations = 5000 \\		
+	output\_file\_extension = pepXML \\
+	output\_format = pepXML \\
+	output\_report\_topN = 1 \\
+	output\_max\_expect = 50.0 \\
+	precursor\_charge = 0 0 \\
+	override\_charge = 0 \\	
+	digest\_min\_length = 7 \\
+	digest\_max\_length = 50 \\
+	digest\_mass\_range = 500.0 5000.0	 \\		
+	max\_fragment\_charge = 2 \\		
+	track\_zero\_topN = 0 \\	
+	zero\_bin\_accept\_expect = 0 \\		
+	zero\_bin\_mult\_expect = 1 \\		
+	add\_topN\_complementary = 0 \\
+	minimum\_peaks = 15 \\	
+	use\_topN\_peaks = 100 \\
+	min\_fragments\_modelling = 3 \\
+	min\_matched\_fragments = 6 \\
+	minimum\_ratio = 0.01 \\	
+	clear\_mz\_range = 0.0 0.0 \\		
+	add\_Cterm\_peptide = 0.000000 \\
+	add\_Nterm\_peptide = 0.000000 \\
+	add\_Cterm\_protein = 0.000000 \\
+	add\_Nterm\_protein = 0.000000 \\
+	add\_G\_glycine = 0.000000 \\
+	add\_A\_alanine = 0.000000 \\ 
+	add\_S\_serine = 0.000000 \\
+	add\_P\_proline = 0.000000 \\ 
+	add\_V\_valine = 0.000000 \\
+	add\_T\_threonine = 0.000000 \\ 
+	add\_C\_cysteine = 0.000000 \\ 
+	add\_L\_leucine = 0.000000 \\
+	add\_I\_isoleucine = 0.000000 \\
+	add\_N\_asparagine = 0.000000 \\
+	add\_D\_aspartic\_acid = 0.000000 \\
+	add\_Q\_glutamine = 0.000000 \\
+	add\_K\_lysine = 0.000000 \\
+	add\_E\_glutamic\_acid = 0.000000 \\
+	add\_M\_methionine = 0.000000 \\
+	add\_H\_histidine = 0.000000 \\
+	add\_F\_phenylalanine = 0.000000 \\
+	add\_R\_arginine = 0.000000 \\
+	add\_Y\_tyrosine = 0.000000 \\
+	add\_W\_tryptophan = 0.000000 \\
+	add\_B\_user\_amino\_acid = 0.000000 \\
+	add\_J\_user\_amino\_acid = 0.000000 \\
+	add\_O\_user\_amino\_acid = 0.000000 \\
+	add\_U\_user\_amino\_acid = 0.000000 \\
+	add\_X\_user\_amino\_acid = 0.000000 \\
+	add\_Z\_user\_amino\_acid = 0.000000 \\
+	database\_name = Database.txt \\
+		
+	The MSFragger narrow-window search was run using the following command: \\\\
+	java -Xmx8G -jar MSFragger.jar NarrowWindowSearch.params MSData.mzXML
+	
+	% Title
+	\subsection {Philosopher}
+	
+	% Text:
+	The Philosopher tool used to process the results of MSFragger was run using the following commands: \\\\
+	philosopher\_windows\_amd64.exe workspace --init \\
+	philosopher\_windows\_amd64.exe peptideprophet --nonparam --expectscore --decoy rev --decoyprobs --masswidth 1000.0 --clevel -2 --database Database.txt MSData.pepXML \\
+	philosopher\_windows\_amd64.exe workspace --clean \\
+	philosopher\_windows\_amd64.exe workspace --init \\
+	philosopher\_windows\_amd64.exe proteinprophet --output interact --maxppmdiff 20.0 interact-MSData.pep.xml \\
+	philosopher\_windows\_amd64.exe workspace --clean \\
+	philosopher\_windows\_amd64.exe workspace --init \\
+	philosopher\_windows\_amd64.exe database --annotate Database.txt \\
+	philosopher\_windows\_amd64.exe filter --sequential --pepxml Data --protxml interact.prot.xml \\
+	philosopher\_windows\_amd64.exe report \\
+	philosopher\_windows\_amd64.exe workspace --clean
+	
+	% Title:
+	\subsection {Crux Tide-Search}
+	
+	The Crux Tide-Search was run using the following command: \\\\
+	crux tide-search --num-threads 1 --precursor-window 4 --min-peaks 15 --output-dir crux-output --overwrite true MSData.mzXML Database.txt
+	
+	% Title:
+	\subsection {Results of Experiment 1}
+	
+	\begin {center}
+	
+		% Table 1:
+		\begin {tabular} {| p {3 cm} || p {3 cm} | p {3 cm} | p {3 cm} |}
+		
+			\hline
+			\multicolumn {4} {| c |} {Runtimes of MSFragger and Crux Tide-Search} \\
+			\hline
+			\hline
+			Database Size & MSFragger Open Search & MSFragger Narrow-Window Search & Crux Tide-Search \\
+			\hline
+			0 B & 0:00:03 & 0:00:02 & 0:00:00 \\
+			\hline
+			1 KB & 0:00:53 & 0:00:05 & 0:05:17 \\
+			\hline
+			1 MB & 0:02:18 & 0:02:06 & 0:05:32 \\
+			\hline
+			10 MB & 0:04:19 & 0:03:17 & 0:06:14 \\
+			\hline
+			25 MB & 0:07:08 & 0:03:21 & 0:07:09 \\
+			\hline
+			50 MB & 0:15:09 & 0:11:57 & 0:09:40 \\
+			\hline
+			75 MB & 0:23:36 & 0:15:58 & 0:11:46 \\
+			\hline
+			150 MB & 0:40:46 & 0:22:32 & 0:21:51 \\
+			\hline
+			250 MB & 8:20.56 & 7:35:59 & 0:58:25 \\
+			\hline
+	
+		\end {tabular}
+		
+	\end {center}
+	
+	\begin {center}
+	
+		% Table 2:
+		\begin {tabular} {| p {3 cm} | p {3 cm} |}
+	
+			\hline
+			\multicolumn {2} { | c |} {Fragment-Ion Index Size in MSFragger} \\
+			\hline
+			\hline
+			Database Size & Index Size (GB) \\
+			\hline
+			0 B & 0 \\
+			\hline
+			1 KB & 0 \\
+			\hline
+			1 MB & 0.06 \\
+			\hline
+			10 MB & 0.606 \\
+			\hline
+			25 MB & 1.458 \\
+			\hline
+			50 MB & 2.778 \\
+			\hline
+			75 MB & 4.032 \\
+			\hline
+			100 MB & 5.234 \\
+			\hline
+			150 MB & 7.562 \\
+			\hline
+			250 MB & 12.0 \\
+			\hline
+			500 MB & 22.656 \\
+			\hline
+			1 GB & 43.08 \\
+			\hline
+	
+		\end {tabular}
+		
+	\end {center}
+	
+	% Title:
+	\subsection {Results of Experiment 2}
+	
+		\begin {center}
+	
+		% Table 3:
+		\begin {tabular} {| p {3 cm} || p {3 cm} | p {3 cm} | p {3 cm} |}
+		
+			\hline
+			\multicolumn {4} {| c |} {Runtimes of MSFragger and Crux Tide-Search} \\
+			\hline
+			\hline
+			MS/MS Data Size (GB) & MSFragger Open Search & MSFragger Narrow-Window Search & Crux Tide-Search \\
+			\hline
+			 9.65 & 0:09:54 & 0:04:35 & 0:08:35 \\
+			 \hline
+			 19.3 & 0:22:41 & 0:11:20 & 0:17:25 \\
+			 \hline
+			 28.9 & 0:32:13 & 0:18:52 & 0:27:17 \\
+			 \hline
+			 38.6 & 0:45:25 & 0:26:04 & 0:36:32 \\
+			 \hline
+			 48.3 & 0:46:59 & 0:41:51 & 0:46:51 \\
+			 \hline
+			 57.9 & 0:56:31 & 0:45:23 & 0:56:04 \\
+			 \hline
+			 77.2 & 1:18:01 & 1:00:53 & 1:11:18 \\
+			 \hline
+			 96.5 & 1:51:07 & 1:17:56 & 1:34:01 \\
+			 \hline
+			 193 & 4:01:42 & 2:45:06 & 3:01:17 \\
+			 \hline
+	
+		\end {tabular}
+		
+	\end {center}
+	
+	% Title:
+	\section {Bibliography}
+	
+	% Text:
+	\bibliographystyle{plain}
+	\bibliography{Bibliography}
+
+\end {document}
